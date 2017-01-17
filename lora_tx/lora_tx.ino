@@ -75,10 +75,10 @@ void loop()
   int retries = 0;
   while (packet_req < 10 && retries < 10) {
 
-    char radiopacket[20] = "7";
+    char radiopacket[20];
 
 
-    radiopacket[19] = 0;
+    itoa(packet_req, radiopacket, 10);
 
     // Serial.println("Sending..."); delay(20);
     rf95.send((uint8_t *)radiopacket, 2);
@@ -95,8 +95,47 @@ void loop()
       // Should be a reply message for us now
       if (rf95.recv(buf, &len))
       {
+        /*
+                Serial.print(buf[0]);
+                Serial.print('\t');
+                Serial.print(buf[1]);
+                Serial.print('\t');
+                Serial.print(buf[2]);
+                Serial.print('\t');
+                Serial.print(buf[3]);
+                Serial.print('\t');
+                Serial.print(buf[4]);
+                Serial.print('\t');
+                Serial.print(buf[5] - 48);
+                Serial.println();
+        */
 
-        Serial.println((char*)buf);
+        Serial.print("Log Entry: ");
+        Serial.print(buf[5] - 48);
+        Serial.print("  Pump Status: ");
+
+        if (buf[4] == 0) {
+          Serial.print("ON       ");
+        } else if (buf[4] == 1) {
+          Serial.print("OFF      ");
+        } else if (buf[4] == 3) {
+          Serial.print("PWR LOSS ");
+        } else {
+          Serial.print(" ? ");
+        }
+
+        Serial.print(" Time: ");
+
+        uint32_t replytime = buf[3];
+        replytime = replytime << 8;
+        replytime = replytime | buf[2];
+        replytime = replytime << 8;
+        replytime = replytime | buf[1];
+        replytime = replytime << 8;
+        replytime = replytime | buf[0];
+
+        print_time(replytime);
+
 
         if (packet_req == 0) {
 
@@ -138,7 +177,7 @@ void loop()
   Serial.println(" ");
   Serial.print("Retries: ");
   Serial.println(retries, DEC);
- Serial.println(" ");
+  Serial.println(" ");
   Serial.print("Again?");
   while (!Serial.available()) {
     delay(1);
@@ -148,4 +187,33 @@ void loop()
   }
   Serial.println(" ");
 
+}
+
+
+void print_time(uint32_t currentmillis)
+{
+  uint32_t days = 0;
+  uint32_t hours = 0;
+  uint32_t mins = 0;
+  uint32_t secs = 0;
+  secs = currentmillis / 1000; //convect milliseconds to seconds
+  mins = secs / 60; //convert seconds to minutes
+  hours = mins / 60; //convert minutes to hours
+  days = hours / 24; //convert hours to days
+  secs = secs - (mins * 60); //subtract the coverted seconds to minutes in order to display 59 secs max
+  mins = mins - (hours * 60); //subtract the coverted minutes to hours in order to display 59 minutes max
+  hours = hours - (days * 24); //subtract the coverted hours to days in order to display 23 hours max
+  //Display results
+
+ // if (days > 0) // days will displayed only if value is greater than zero
+//  {
+    Serial.print(days);
+    Serial.print(" days ");
+  //}
+  Serial.print(hours);
+  Serial.print(" hours ");
+  Serial.print(mins);
+  Serial.print(" minutes ");
+  Serial.print(secs);
+   Serial.println(" seconds ago");
 }

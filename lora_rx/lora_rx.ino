@@ -22,8 +22,26 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 // Blinky on receipt
 #define LED 13
 
+boolean input_pin = false;
+boolean input_pin_last = false;
+
+#define EVENTS_TO_SAVE 10
+uint32_t event_times[EVENTS_TO_SAVE];
+uint8_t event_statuses[EVENTS_TO_SAVE];
+
+#define EVENT_TURN_OFF 0  //turn off
+#define EVENT_TURN_ON 1  //turn on
+#define EVENT_POWER_UP 3  //power up
+
 void setup()
 {
+
+  for (int i = 0; i < EVENTS_TO_SAVE; i++) {
+    event_times[i] = 0;
+    event_statuses[i] = EVENT_POWER_UP;
+  }
+
+
 
   pinMode(6, INPUT_PULLUP);
   pinMode(7, OUTPUT);
@@ -64,13 +82,40 @@ void setup()
   // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
   // you can set transmitter powers from 5 to 23 dBm:
   rf95.setTxPower(23, false);
+
+
+
+
+  input_pin = digitalRead(6);
+  input_pin_last = input_pin;
+  add_event();
+
+}
+void add_event() {
+  for (int i = EVENTS_TO_SAVE - 1; i > 0; i--) {
+    event_times[i] =  event_times[i - 1];
+    event_statuses[i] = event_statuses[i - 1];
+  }
+  if (input_pin) {
+    event_statuses[0] = EVENT_TURN_ON;
+  } else {
+    event_statuses[0] = EVENT_TURN_OFF;
+  }
+  event_times[0] = millis();
+
 }
 
 void loop()
 {
 
+  input_pin = digitalRead(6);
+  if ( input_pin_last != input_pin) {
+    add_event();
+    input_pin_last = input_pin;
+  }
 
-    Serial.println(digitalRead(6));
+
+  //Serial.println(digitalRead(6));
   if (rf95.available())  {
     // Should be a message for us now
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
@@ -85,22 +130,28 @@ void loop()
       Serial.print("RSSI: ");
       Serial.println(rf95.lastRssi(), DEC);
 
-      // Send a reply
-      uint8_t unknown[] = "I cant even";
-      uint8_t one[] = "Message 1";
-      uint8_t two[] = "2 Message 2 Furious";
-      switch (buf[0]) {
-        case '1':
-          rf95.send(one, sizeof(one));
-          break;
-        case '2':
-          rf95.send(two, sizeof(two));
-          break;
-        default:
+      uint8_t reply[6];
 
-          rf95.send(unknown, sizeof(unknown));
-          break;
+      for (int i; i < 6; i++) reply[i] = 0;
+
+      int request = buf[0] - 48;
+
+
+      if (request >= 0 && request < EVENTS_TO_SAVE) {
+        Serial.println("good");
+        uint32_t timdiff = 0;
+
+        if (event_times[request] != 0) timdiff = millis() - event_times[request];
+
+        reply[0] = (timdiff >> 0) & 0xFF;
+        reply[1] = (timdiff >> 8) & 0xFF;
+        reply[2] = (timdiff >> 16) & 0xFF;
+        reply[3] = (timdiff >> 24) & 0xFF;
+        reply[4] = event_statuses[request];
+        reply[5] = buf[0];
       }
+
+      rf95.send(reply, sizeof(reply));
 
       rf95.waitPacketSent();
       Serial.println("Sent a reply");
@@ -111,8 +162,5 @@ void loop()
       Serial.println("Receive failed");
     }
   }
-
-    digitalWrite(LED, digitalRead(6));
-
 
 }
