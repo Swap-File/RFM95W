@@ -73,6 +73,11 @@ void loop()
 
   int packet_req = 0;
   int retries = 0;
+
+  uint32_t result_mode[10];
+  uint32_t result_time[10];
+
+
   while (packet_req < 10 && retries < 10) {
 
     char radiopacket[20];
@@ -88,6 +93,8 @@ void loop()
     // Now wait for a reply
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
+
+
 
     // Serial.println("Waiting for reply..."); delay(50);
     if (rf95.waitAvailableTimeout(2000))
@@ -114,15 +121,8 @@ void loop()
         Serial.print(buf[5] - 48);
         Serial.print("  Pump Status: ");
 
-        if (buf[4] == 0) {
-          Serial.print("ON       ");
-        } else if (buf[4] == 1) {
-          Serial.print("OFF      ");
-        } else if (buf[4] == 3) {
-          Serial.print("PWR LOSS ");
-        } else {
-          Serial.print(" ? ");
-        }
+        result_mode[packet_req] = buf[4];
+        print_mode(result_mode[packet_req]);
 
         Serial.print(" Time: ");
 
@@ -134,8 +134,10 @@ void loop()
         replytime = replytime << 8;
         replytime = replytime | buf[0];
 
-        print_time(replytime);
+        result_time[packet_req] = replytime;
+        Serial.println(result_time[packet_req]);
 
+        //print_time(replytime);
 
         if (packet_req == 0) {
 
@@ -150,7 +152,6 @@ void loop()
 
         }
 
-
         packet_req++;
       }
       else
@@ -163,11 +164,29 @@ void loop()
       retries++;
     }
 
-
-
-
   }
   Serial.println(" ");
+
+
+  if (retries >= 10) {
+
+    Serial.println("Transmission errors.");
+
+  } else {
+    //new report
+    Serial.println("Currently:");
+    for (int i = 0; i < 10; i++) {
+
+      print_mode(result_mode[i]);
+      Serial.println(" ");
+      if (i < 9 && result_time[i + 1] != 0) {
+        Serial.print("Then no activity for: ");
+        print_time(result_time[i + 1] - result_time[i]);
+      }
+    }
+  }
+  Serial.println(" ");
+
   Serial.print("RSSI Min/Avg/Max ");
   Serial.print(max_rssi, 1);
   Serial.print("/");
@@ -189,6 +208,18 @@ void loop()
 
 }
 
+void print_mode(byte status_input) {
+  Serial.print("Status: ");
+  if (status_input == 0) {
+    Serial.print("ON       ");
+  } else if (status_input == 1) {
+    Serial.print("OFF      ");
+  } else if (status_input == 3) {
+    Serial.print("PWR LOSS ");
+  } else {
+    Serial.print(" ? ");
+  }
+}
 
 void print_time(uint32_t currentmillis)
 {
@@ -205,15 +236,15 @@ void print_time(uint32_t currentmillis)
   hours = hours - (days * 24); //subtract the coverted hours to days in order to display 23 hours max
   //Display results
 
- // if (days > 0) // days will displayed only if value is greater than zero
-//  {
-    Serial.print(days);
-    Serial.print(" days ");
+  // if (days > 0) // days will displayed only if value is greater than zero
+  //  {
+  Serial.print(days);
+  Serial.print(" days ");
   //}
   Serial.print(hours);
   Serial.print(" hours ");
   Serial.print(mins);
   Serial.print(" minutes ");
   Serial.print(secs);
-   Serial.println(" seconds ago");
+  Serial.println(" seconds");
 }
