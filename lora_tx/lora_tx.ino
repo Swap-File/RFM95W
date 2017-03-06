@@ -174,7 +174,10 @@ void loop()
 
   } else {
     //new report
-    Serial.println("Currently:");
+    Serial.print("For the last: ");
+    print_time(result_time[0]);
+    Serial.println("The pump has been:");
+    
     for (int i = 0; i < 10; i++) {
 
       print_mode(result_mode[i]);
