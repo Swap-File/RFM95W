@@ -25,7 +25,7 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 boolean input_pin = false;
 boolean input_pin_last = false;
 
-#define EVENTS_TO_SAVE 10
+#define EVENTS_TO_SAVE 20
 uint32_t event_times[EVENTS_TO_SAVE];
 uint8_t event_statuses[EVENTS_TO_SAVE];
 
@@ -105,13 +105,16 @@ void add_event() {
 
 }
 
+uint32_t last_time = 0;
+
 void loop()
 {
 
   input_pin = digitalRead(6);
-  if ( input_pin_last != input_pin) {
+  if ( input_pin_last != input_pin &&  millis() - last_time > 5000) {
     add_event();
     input_pin_last = input_pin;
+    last_time = millis();
   }
 
 
@@ -126,7 +129,7 @@ void loop()
       digitalWrite(LED, HIGH);
       RH_RF95::printBuffer("Received: ", buf, len);
       Serial.print("Got: ");
-      Serial.println((char*)buf);
+      Serial.println(buf[0]);
       Serial.print("RSSI: ");
       Serial.println(rf95.lastRssi(), DEC);
 
@@ -134,7 +137,7 @@ void loop()
 
       for (int i; i < 6; i++) reply[i] = 0;
 
-      int request = buf[0] - 48;
+      int request = buf[0];
 
 
       if (request >= 0 && request < EVENTS_TO_SAVE) {

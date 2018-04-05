@@ -74,16 +74,15 @@ void loop()
   int packet_req = 0;
   int retries = 0;
 
-  uint32_t result_mode[10];
-  uint32_t result_time[10];
+  uint32_t result_mode[20];
+  uint32_t result_time[20];
 
 
-  while (packet_req < 10 && retries < 10) {
+  while (packet_req < 20 && retries < 10) {
 
     char radiopacket[20];
 
-
-    itoa(packet_req, radiopacket, 10);
+    radiopacket[0] = packet_req;
 
     // Serial.println("Sending..."); delay(20);
     rf95.send((uint8_t *)radiopacket, 2);
@@ -118,7 +117,7 @@ void loop()
         */
 
         Serial.print("Log Entry: ");
-        Serial.print(buf[5] - 48);
+        Serial.print((int)buf[5]);
         Serial.print("  Pump Status: ");
 
         result_mode[packet_req] = buf[4];
@@ -178,11 +177,11 @@ void loop()
     print_time(result_time[0]);
     Serial.println("The pump has been:");
     
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 20; i++) {
 
       print_mode(result_mode[i]);
       Serial.println(" ");
-      if (i < 9 && result_time[i + 1] != 0) {
+      if (i < 19 && result_time[i + 1] != 0) {
         Serial.print("Then no activity for: ");
         print_time(result_time[i + 1] - result_time[i]);
       }
