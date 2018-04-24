@@ -63,10 +63,10 @@ void setup()
 
 void loop()
 {
-
-  Serial.println("Starting Request...");
-  // Send a message to rf95_server
   Serial.println(" ");
+  Serial.println("Pump Log Downloading...");
+  // Send a message to rf95_server
+
   float min_rssi = 0;
   float max_rssi = 0;
   float average_rssi = 0;
@@ -117,11 +117,11 @@ void loop()
         */
 
         Serial.print("Log Entry: ");
+        if ((int)buf[5] < 10) Serial.print("0");
         Serial.print((int)buf[5]);
-        Serial.print("  Pump Status: ");
-
+        Serial.print(" ");
         result_mode[packet_req] = buf[4];
-        print_mode(result_mode[packet_req]);
+        print_mode(result_mode[packet_req],true);
 
         Serial.print(" Time: ");
 
@@ -164,8 +164,6 @@ void loop()
     }
 
   }
-  Serial.println(" ");
-
 
   if (retries >= 10) {
 
@@ -173,19 +171,41 @@ void loop()
 
   } else {
     //new report
-    Serial.print("For the last: ");
-    print_time(result_time[0]);
-    Serial.println("The pump has been:");
-    
-    for (int i = 0; i < 20; i++) {
+    Serial.println(" ");
+    Serial.println("Pump Report:");
 
-      print_mode(result_mode[i]);
-      Serial.println(" ");
-      if (i < 19 && result_time[i + 1] != 0) {
-        Serial.print("Then no activity for: ");
-        print_time(result_time[i + 1] - result_time[i]);
+    uint32_t results[20];
+
+    print_mode(result_mode[0],true);
+    Serial.print(" NOW: ");
+    print_time(result_time[0]);
+    Serial.println("");
+    Serial.println(" ");
+    for (int i = 1; i < 19; i++) {
+      print_mode(result_mode[i],true);
+      Serial.print(" ");
+      results[i] = result_time[i] - result_time[i - 1];
+      print_time(results[i]);
+      if ((i + 1) % 2) {
+
+        Serial.print("  CYCLE: ");
+        print_time(results[i] + results[i - 1] );
+        Serial.print("     ");
       }
+      else {
+        Serial.print("                 ");
+      }
+
+      if (result_mode[i] == 1) Serial.print("                    ");
+
+
+      print_mode(result_mode[i],false);
+      print_time(results[i]);
+
+
+      Serial.println("");
     }
+
   }
   Serial.println(" ");
 
@@ -210,12 +230,12 @@ void loop()
 
 }
 
-void print_mode(byte status_input) {
-  Serial.print("Status: ");
+void print_mode(byte status_input,bool title) {
+ if(title) Serial.print("Status: ");
   if (status_input == 0) {
-    Serial.print("ON       ");
+    Serial.print("ON  ");
   } else if (status_input == 1) {
-    Serial.print("OFF      ");
+    Serial.print("OFF ");
   } else if (status_input == 3) {
     Serial.print("PWR LOSS ");
   } else {
@@ -238,15 +258,17 @@ void print_time(uint32_t currentmillis)
   hours = hours - (days * 24); //subtract the coverted hours to days in order to display 23 hours max
   //Display results
 
-  // if (days > 0) // days will displayed only if value is greater than zero
-  //  {
-  Serial.print(days);
-  Serial.print(" days ");
-  //}
+  if (days > 0) // days will displayed only if value is greater than zero
+  {
+    Serial.print(days);
+    Serial.print(" Days & ");
+  }
   Serial.print(hours);
-  Serial.print(" hours ");
+  Serial.print(":");
+  if (mins < 10) Serial.print("0");
   Serial.print(mins);
-  Serial.print(" minutes ");
+  Serial.print(":");
+  if (secs < 10) Serial.print("0");
   Serial.print(secs);
-  Serial.println(" seconds");
+
 }
